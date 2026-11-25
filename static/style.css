@@ -1090,18 +1090,20 @@ body.alert-open .toasts { right: 360px; }
   .chart-tabs { order: 3; width: 100%; justify-content: flex-start; padding-top: 0; gap: 16px; }
 }
 @media (max-width: 760px) {
-  .topbar { gap: 10px; padding: 0 12px; }
+  .topbar { height: 46px; gap: 8px; padding: 0 10px; }
   .brand { width: auto; }
+  .brand-name { font-size: 14px; white-space: nowrap; }
   .brand-sub { display: none; }
   .topbar-right { margin-left: 0; gap: 0; }
   .status { display: none; }
-  .search-wrap { min-width: 0; }
-  .search-results { max-height: 60vh; }
+  .search-wrap { min-width: 0; height: 30px; padding: 0 8px; }
+  #searchInput { margin-right: 0; font-size: 12px; }
+  .search-results { top: 36px; max-height: 60vh; }
   kbd, .stats { display: none; }
   /* .stats 在手机上整块隐藏，振幅挪到价格行，别让它跟着一起消失 */
   .amp { display: inline; margin-left: 2px; }
   .layout { grid-template-columns: 1fr; }
-  .watch-btn { display: inline-flex; }
+  .watch-btn { display: inline-flex; padding: 0 7px; }
   .watch-panel {
     display: flex;
     position: fixed;
@@ -1135,15 +1137,17 @@ body.alert-open .toasts { right: 360px; }
   }
   body.watch-open .watch-scrim { opacity: 1; pointer-events: auto; }
   .watch-close { display: grid; }
-  .chart-head { flex-wrap: wrap; gap: 6px 10px; padding: 9px 12px 7px; }
+  .chart-head { flex-wrap: wrap; gap: 6px 10px; padding: 8px 12px 6px; }
   .stock-id { min-width: 0; flex: 1; }
-  .name-line h1 { font-size: 15px; }
+  .name-line { min-width: 0; }
+  .name-line h1 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .last { font-size: 23px; }
-  .star-btn { padding: 0 6px; }
-  /* 移动端同样按 16px / 12px 栅格，不再用 space-between 让间距随宽度乱变 */
-  .chart-tabs { order: 3; width: 100%; gap: 16px; padding-top: 2px; justify-content: flex-start; }
+  .star-btn { margin-left: auto; padding: 0 7px; flex: 0 0 auto; }
+  .bell-btn { flex: 0 0 auto; }
+  /* 移动端同样按 16px 栅格；右侧操作组贴右且去掉桌面端的左分隔线 */
+  .chart-tabs { order: 3; width: 100%; gap: 14px; padding-top: 2px; justify-content: flex-start; }
   .chart-tabs button { flex: 0 0 auto; }
-  .tab-actions { margin-left: auto; gap: 8px; }
+  .tab-actions { margin-left: auto; padding-left: 0; border-left: 0; gap: 6px; }
   .chart-tabs .range-wrap { flex: 0 0 60px; }
   .chart-tabs .range-select { width: 100%; padding: 0 16px 0 6px; }
   .index-strip {
@@ -1173,20 +1177,36 @@ body.alert-open .toasts { right: 360px; }
   .alert-panel { width: 100%; }
   .toasts, body.alert-open .toasts { left: 12px; right: 12px; bottom: 12px; }
   .toast { width: auto; }
-  .perf-strip { height: auto; padding: 5px 12px; gap: 0; overflow: visible; }
-  .perf-label { display: none; }
-  .perf-items {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 4px 6px;
-    width: 100%;
+  /* 移动端区间改为单行横向滑动，把纵向高度让给图表 */
+  .perf-strip {
+    height: 30px;
+    padding: 0 12px;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
-  .perf-item { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
-  .perf-item span { font-size: 9.5px; line-height: 1.5; }
-  .perf-item b { font-size: 11px; line-height: 1.4; }
-  .breadth-row { padding: 6px 12px; gap: 10px; }
-  .breadth-bar { width: 80px; }
-  .breadth-stats { font-size: 10px; line-height: 1.6; }
+  .perf-label { display: inline; font-size: 10px; }
+  .perf-items { display: flex; gap: 14px; width: auto; }
+  .perf-item { flex-direction: row; align-items: baseline; gap: 4px; flex: 0 0 auto; }
+  .perf-item span { font-size: 10px; line-height: 1; }
+  .perf-item b { font-size: 11px; line-height: 1; }
+  /* 市场宽度行同样收成单行横向滑动，避免窄屏折成两三行 */
+  .breadth-row {
+    height: 28px;
+    padding: 0 12px;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .breadth-row::-webkit-scrollbar { display: none; }
+  .breadth-bar { width: 56px; flex: 0 0 auto; }
+  .breadth-stats { font-size: 10px; line-height: 1; flex: 0 0 auto; }
   /* 窄屏放不下信号灯整句：只留百分比，说明放 title */
   .width-signal { padding-left: 8px; margin-left: 0; }
   .width-signal em { display: none; }
