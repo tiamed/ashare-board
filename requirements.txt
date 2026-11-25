@@ -1,0 +1,7 @@
+# A股看盘 Webapp 的全部第三方依赖。
+#
+# 说明：整个后端只用标准库 + eltdx，没有 Web 框架、没有数据库、没有前端构建工具。
+# 前端 ECharts 和字体都已 vendor 在 static/vendor/ 下，不需要 npm。
+#
+# eltdx 是「非商业学习与研究」授权，不是开源授权。详见 NOTICE。
+eltdx>=3.3.0,<4

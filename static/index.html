@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A股看盘 · TDX 实时行情</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0c0e'/%3E%3Ctext x='16' y='23' font-size='19' font-family='Georgia,serif' fill='%23d3cdc1' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem("ashare-theme");
+    if (t !== "light" && t !== "dark") {
+      t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+})();
+</script>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-name">A股看盘</span>
+    <span class="brand-sub">TDX 直连</span>
+  </div>
+
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="6.8" cy="6.8" r="4.3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M10.2 10.2L14 14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    <input id="searchInput" type="text" autocomplete="off" spellcheck="false"
+           placeholder="输入代码或名称，如 600519 / 茅台">
+    <kbd>Enter</kbd>
+    <div id="searchResults" class="search-results hidden"></div>
+  </div>
+
+  <button id="watchBtn" class="watch-btn" type="button" aria-controls="watchPanel" aria-expanded="false" title="自选列表">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.6 4.4h7.2M5.6 8h7.2M5.6 11.6h7.2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="3" cy="4.4" r=".85" fill="currentColor"/><circle cx="3" cy="8" r=".85" fill="currentColor"/><circle cx="3" cy="11.6" r=".85" fill="currentColor"/></svg>
+    <span class="watch-btn-label">自选</span>
+    <span id="watchBtnCount" class="watch-count">0</span>
+  </button>
+
+  <button id="themeBtn" class="theme-btn" title="切换日间/夜间" aria-label="切换日间/夜间">
+    <svg class="icon-moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 9.4A5.6 5.6 0 1 1 6.6 2.8a5.6 5.6 0 0 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+    <svg class="icon-sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 1.6v1.5M8 12.9v1.5M1.6 8h1.5M12.9 8h1.5M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+  </button>
+
+  <div class="status">
+    <span id="clock" class="clock">--:--:--</span>
+    <span id="connDot" class="conn-dot"></span>
+    <span id="connText" class="conn-text">连接中</span>
+  </div>
+</header>
+
+<section class="index-strip" id="indexStrip"></section>
+
+<div class="breadth-row">
+  <div class="breadth-bar"><div id="breadthUp" class="breadth-up"></div><div id="breadthDown" class="breadth-down"></div></div>
+  <div class="breadth-stats" id="breadthStats">加载市场宽度…</div>
+  <span id="widthSignal" class="width-signal hidden" role="status"></span>
+</div>
+
+<div id="watchScrim" class="watch-scrim" aria-hidden="true"></div>
+
+<main class="layout">
+  <aside class="panel watch-panel" id="watchPanel">
+    <div class="panel-head">
+      <h2>自选</h2>
+      <span class="muted small" id="watchCount">0</span>
+      <button id="watchClose" class="watch-close" type="button" aria-label="关闭自选">×</button>
+    </div>
+    <div id="watchList" class="watch-list"></div>
+    <div id="watchEmpty" class="empty-note">
+      还没有自选。<br>搜索代码或名称，点「自选」加入。
+    </div>
+  </aside>
+
+  <section class="panel chart-panel">
+    <div class="chart-head">
+      <div class="stock-id">
+        <div class="name-line">
+          <h1 id="stockName">上证指数</h1>
+          <a id="stockCode" class="code code-link" href="https://xueqiu.com/S/SH000001"
+             target="_blank" rel="noopener noreferrer" title="在雪球查看 SH000001">
+            <span id="stockCodeText" class="code-text">sh000001</span>
+            <svg class="ext-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.4 3H13v3.6M13 3L7.7 8.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.2 9.3v3.2a1.5 1.5 0 0 1-1.5 1.5H4.3a1.5 1.5 0 0 1-1.5-1.5V6.5a1.5 1.5 0 0 1 1.5-1.5h3.2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <button id="starBtn" class="star-btn" title="加入自选" aria-label="加入自选">
+            <svg class="icon-add" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            <svg class="icon-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.4 8.4l3.1 3.1 6.1-7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="starText">自选</span>
+          </button>
+          <button id="alertBtn" class="bell-btn" title="盯盘提醒" aria-label="盯盘提醒">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.1a3.3 3.3 0 0 0-3.3 3.3v2.2L3.4 10h9.2l-1.3-2.4V5.4A3.3 3.3 0 0 0 8 2.1z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M6.5 12.1a1.6 1.6 0 0 0 3 0" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+            <span id="alertBadge" class="alert-badge"></span>
+          </button>
+        </div>
+        <div class="price-line">
+          <span id="stockLast" class="last">--</span>
+          <span id="stockChange" class="chg">--</span>
+          <span id="stockPct" class="pct">--</span>
+          <span id="stockAmp" class="amp" title="振幅 =（最高 − 最低）/ 昨收">--</span>
+        </div>
+        <div id="posRow" class="pos-row hidden" role="status">
+          <span class="pos-label">日内</span>
+          <span class="pos-track"><i id="posFill"></i></span>
+          <b id="posPct">--</b>
+          <em id="posZone"></em>
+          <span id="posStreak" class="pos-streak hidden"></span>
+        </div>
+      </div>
+      <div class="stats" id="stockStats"></div>
+      <div class="chart-tabs" id="chartTabs">
+        <button data-mode="minute" class="active">分时</button>
+        <button data-mode="day">日K</button>
+        <button data-mode="week">周K</button>
+        <button data-mode="month">月K</button>
+        <span class="tab-actions">
+          <button id="markBtn" class="mark-btn" type="button" aria-pressed="true" title="顶/底、拉/砸标注">标注</button>
+          <span id="rangeWrap" class="range-wrap">
+            <select id="rangeSel" class="range-select" title="K线历史区间">
+              <option value="1y">1年</option>
+              <option value="3y">3年</option>
+              <option value="5y" selected>5年</option>
+              <option value="all">全部</option>
+            </select>
+            <svg class="range-chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </span>
+      </div>
+    </div>
+    <div id="perfStrip" class="perf-strip">
+      <span class="perf-label">区间</span>
+      <div class="perf-items" id="perfItems"></div>
+    </div>
+    <div class="chart-wrap">
+      <div id="chart" class="chart"></div>
+      <div id="maLegend" class="ma-legend hidden" role="group" aria-label="分时均线"></div>
+      <button id="auctionToggle" class="auction-toggle hidden" type="button"></button>
+    </div>
+    <div id="chartEmpty" class="chart-empty hidden">暂无数据</div>
+  </section>
+
+  <aside class="panel rank-panel">
+    <div class="rank-tabs" id="rankTabs">
+      <button data-sort="pct" class="active">涨幅</button>
+      <button data-sort="drop">跌幅</button>
+      <button data-sort="amount">成交额</button>
+      <button data-sort="speed">涨速</button>
+    </div>
+    <div id="rankList" class="rank-list"></div>
+  </aside>
+</main>
+
+<div id="alertOverlay" class="alert-overlay hidden"></div>
+<aside id="alertPanel" class="alert-panel hidden" aria-label="盯盘提醒">
+  <div class="alert-head">
+    <h3>盯盘提醒</h3>
+    <button id="alertClose" class="alert-close" aria-label="关闭">×</button>
+  </div>
+  <div class="alert-perm" id="alertPerm"></div>
+  <form id="alertForm" class="alert-form">
+    <div class="alert-target"><b id="alertName">--</b><a id="alertCode" class="code code-link" href="https://xueqiu.com/S/SH000001" target="_blank" rel="noopener noreferrer" title="在雪球查看">--</a><span id="alertQuote" class="alert-quote"></span></div>
+    <div class="alert-inputs">
+      <select id="alertType" aria-label="条件">
+        <option value="price_above">价格 ≥</option>
+        <option value="price_below">价格 ≤</option>
+        <option value="pct_above">涨幅 ≥</option>
+        <option value="pct_below">跌幅 ≥</option>
+      </select>
+      <input id="alertValue" type="number" step="any" inputmode="decimal" placeholder="阈值" aria-label="阈值">
+      <button type="submit" class="alert-add">添加</button>
+    </div>
+    <div class="alert-hint" id="alertHint">触发一次后停止，可重置再盯。</div>
+  </form>
+  <div class="alert-list" id="alertList"></div>
+</aside>
+<div id="toasts" class="toasts"></div>
+
+<script src="/vendor/echarts.min.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
