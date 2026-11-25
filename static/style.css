@@ -885,8 +885,25 @@ body.alert-open .toasts { right: 360px; }
 .perf-item b { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; font-weight: 500; }
 .perf-empty { color: var(--muted); font-size: 10.5px; }
 
-.chart-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
-.chart { position: absolute; inset: 0; width: 100%; height: 100%; }
+.chart-wrap { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.chart { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity .15s ease; }
+.chart-wrap.loading .chart { opacity: .52; }
+.chart-wrap.loading::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--bone), transparent);
+  z-index: 8;
+  pointer-events: none;
+  animation: chart-load 1s ease-in-out infinite;
+}
+@keyframes chart-load {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
 
 .auction-toggle {
   position: absolute;

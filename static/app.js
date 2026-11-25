@@ -13,6 +13,7 @@
     theme: "dark",
     performance: null,
     pendingZoom: null,
+    savedDayZoom: null,
     klineMeta: null,
     alerts: [],
     alertBusy: false,
@@ -416,6 +417,10 @@
 
     renderDayPosition(q);
     syncStar();
+    const lastTxt = fmtPrice(q.last, dec);
+    document.title = lastTxt !== "--"
+      ? `${state.selected.name} ${lastTxt} ${fmtPct(q.pct)} · A股看盘`
+      : `${state.selected.name} · A股看盘`;
   }
 
   /* ---------------- 收盘位置连续低位天数（P1-2） ---------------- */
@@ -622,6 +627,7 @@
       state.quote = q;
       if (q.name && !/^(sh|sz|bj)\d{6}$/.test(q.name)) {
         state.selected.name = q.name;
+        saveLastView();
       }
       renderQuote(q);
       if (!$("#alertPanel").classList.contains("hidden")) updateAlertTarget();
@@ -1147,23 +1153,68 @@
   }
 
   /* ---------------- 选中 ---------------- */
+  const VIEW_KEY = "ashare-last-view";
+
+  function saveLastView() {
+    try {
+      localStorage.setItem(VIEW_KEY, JSON.stringify({
+        code: state.selected.code,
+        name: state.selected.name,
+        decimal: state.selected.decimal,
+        mode: state.mode,
+      }));
+    } catch (e) { /* ignore */ }
+  }
+
+  function loadLastView() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(VIEW_KEY) || "null");
+      if (raw && typeof raw.code === "string" && /^(sh|sz|bj)\d{6}$/.test(raw.code)) return raw;
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  function hashCode() {
+    const m = (location.hash || "").match(/^#?((?:sh|sz|bj)\d{6})$/i);
+    return m ? m[1].toLowerCase() : null;
+  }
+
+  function findKnownName(code) {
+    const w = state.watchlist.find((x) => x.code === code);
+    if (w && w.name) return w.name;
+    const idx = ((state.overview && state.overview.indices) || []).find((x) => x.code === code);
+    if (idx && idx.name) return idx.name;
+    const a = state.alerts.find((x) => x.code === code);
+    if (a && a.name) return a.name;
+    return null;
+  }
+
   function selectStock(code, name, decimal) {
     if (!code) return;
     state.selected = {
       code,
-      name: name || code,
+      name: name || findKnownName(code) || code,
       decimal: decimal ?? decimalsFor(code),
     };
     state.quote = null;
     state.performance = null;
     state.pendingZoom = null;
+    state.savedDayZoom = null;
     state.minuteDate = null;
+    saveLastView();
+    if (location.hash !== `#${code}`) {
+      try { history.replaceState(null, "", `#${code}`); } catch (e) { /* ignore */ }
+    }
     syncChartChrome();
     $("#perfItems").innerHTML = "";
     renderQuotePlaceholder();
     $$(".index-card").forEach((el) => el.classList.toggle("active", el.dataset.code === code));
     revealActiveIndex();
-    $$(".watch-row").forEach((el) => el.classList.toggle("active", el.dataset.code === code));
+    $$(".watch-row").forEach((el) => {
+      const on = el.dataset.code === code;
+      el.classList.toggle("active", on);
+      if (on) el.scrollIntoView({ block: "nearest" });
+    });
     loadQuote();
     loadChart();
     loadPerformance();
@@ -1731,7 +1782,19 @@
     const kMarks = pivots.map((p) => makeMarkPoint([p.i, p.price], p.kind === "top" ? "顶" : "底", p.kind === "top"));
 
     const dec = state.selected.decimal;
-    const zoomStart = Math.max(0, dates.length - 160);
+    let zoomStart = Math.max(0, dates.length - 160);
+    let zoomEnd = dates.length - 1;
+    if (
+      !state.pendingZoom &&
+      state.mode === "day" &&
+      state.savedDayZoom &&
+      state.savedDayZoom.code === state.selected.code &&
+      state.savedDayZoom.range === state.range
+    ) {
+      zoomStart = Math.max(0, Math.min(dates.length - 1, state.savedDayZoom.startValue));
+      zoomEnd = Math.max(zoomStart, Math.min(dates.length - 1, state.savedDayZoom.endValue));
+      state.savedDayZoom = null;
+    }
     const adjLabel = data.adjust === "none" ? "不复权" : data.adjust === "hfq" ? "后复权" : "前复权";
     // 窄屏图窄，长文本会压到右侧 MA 图例上：缩成「根数 · 复权」，图例只留色块
     const narrow = state.chart.getWidth() < 560;
@@ -1836,12 +1899,12 @@
       dataZoom: [
         {
           type: "inside", xAxisIndex: [0, 1],
-          startValue: zoomStart, endValue: dates.length - 1,
+          startValue: zoomStart, endValue: zoomEnd,
           filterMode: "filter",
         },
         {
           type: "slider", xAxisIndex: [0, 1],
-          startValue: zoomStart, endValue: dates.length - 1,
+          startValue: zoomStart, endValue: zoomEnd,
           filterMode: "filter",
           bottom: 4, height: 18,
           borderColor: "rgba(128,128,128,.35)",
@@ -1892,6 +1955,7 @@
       const start = Math.max(0, n - 1 - state.pendingZoom);
       state.chart.dispatchAction({ type: "dataZoom", startValue: start, endValue: n - 1 });
       state.pendingZoom = null;
+      state.savedDayZoom = null;
     }
     scheduleRangeText();
   }
@@ -1905,11 +1969,10 @@
     });
   }
 
-  function updateRangeText() {
-    if (!state.chart || !state.klineMeta) return;
-    const dates = state.klineMeta.dates;
-    const n = dates.length;
-    if (!n) return;
+  function currentKlineZoom() {
+    if (!state.chart || !state.klineMeta) return null;
+    const n = state.klineMeta.dates.length;
+    if (!n) return null;
     const opt = state.chart.getOption();
     const dz = (opt.dataZoom || []).find((d) => d.type === "inside") || (opt.dataZoom || [])[0] || {};
     let s = dz.startValue;
@@ -1920,6 +1983,15 @@
     }
     s = Math.max(0, Math.min(n - 1, Math.round(s)));
     e = Math.max(0, Math.min(n - 1, Math.round(e)));
+    return { startValue: s, endValue: e };
+  }
+
+  function updateRangeText() {
+    const z = currentKlineZoom();
+    if (!z) return;
+    const dates = state.klineMeta.dates;
+    const s = z.startValue;
+    const e = z.endValue;
     const text = state.chart.getWidth() < 560
       ? `${e - s + 1} 根 · ${state.klineMeta.adjust}`
       : `${dates[s]} 至 ${dates[e]}，${e - s + 1} 根，${state.klineMeta.adjust}`;
@@ -1936,10 +2008,22 @@
     });
   }
 
-  async function loadChart() {
+  let chartLoadTimer = 0;
+  function setChartLoading(on) {
+    clearTimeout(chartLoadTimer);
+    chartLoadTimer = 0;
+    const wrap = $(".chart-wrap");
+    if (!wrap) return;
+    if (!on) { wrap.classList.remove("loading"); return; }
+    // 缓存命中（<90ms）不闪加载态，只有真实等待网络返回时才显示
+    chartLoadTimer = setTimeout(() => wrap.classList.add("loading"), 90);
+  }
+
+  async function loadChart(silent = false) {
     const code = state.selected.code;
     const mode = state.mode;
     const seq = ++state.chartSeq;
+    if (!silent) setChartLoading(true);
     try {
       if (mode === "minute") {
         if (state.minuteDate) {
@@ -1974,6 +2058,8 @@
       }
     } catch (err) {
       if (seq === state.chartSeq) showChartEmpty(`图表加载失败：${err.message}`);
+    } finally {
+      if (seq === state.chartSeq) setChartLoading(false);
     }
   }
 
@@ -2089,6 +2175,18 @@
   }
 
   function openDayMinute(date) {
+    // 离开日K前记住当前缩放范围，点「返回日K」或按 Esc 时还原
+    if (state.mode === "day") {
+      const z = currentKlineZoom();
+      if (z) {
+        state.savedDayZoom = {
+          code: state.selected.code,
+          range: state.range,
+          startValue: z.startValue,
+          endValue: z.endValue,
+        };
+      }
+    }
     state.minuteDate = date === todayStr() ? null : date;
     state.mode = "minute";
     $$("#chartTabs button[data-mode]").forEach((b) => b.classList.toggle("active", b.dataset.mode === "minute"));
@@ -2105,12 +2203,27 @@
   }
 
   function switchMode(mode) {
-    if (mode !== "day") state.pendingZoom = null;
+    if (mode !== "day") {
+      state.pendingZoom = null;
+      state.savedDayZoom = null;
+    }
     state.minuteDate = null;
     state.mode = mode;
+    saveLastView();
     $$("#chartTabs button[data-mode]").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
     syncChartChrome();
     loadChart();
+  }
+
+  function stepWatchlist(delta) {
+    const list = state.watchlist || [];
+    if (!list.length) return;
+    const idx = list.findIndex((w) => w.code === state.selected.code);
+    const nextIdx = idx < 0
+      ? (delta > 0 ? 0 : list.length - 1)
+      : (idx + delta + list.length) % list.length;
+    const item = list[nextIdx];
+    if (item) selectStock(item.code, item.name, decimalsFor(item.code, item.last));
   }
 
   /* ---------------- 事件绑定 ---------------- */
@@ -2314,9 +2427,43 @@
         closeAlerts();
         return;
       }
-      if (e.key === "/" && document.activeElement !== input) {
+      if (e.key === "Escape" && state.mode === "minute" && state.minuteDate) {
+        switchMode("day");
+        return;
+      }
+      const ae = document.activeElement;
+      const editing = ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT" || ae.isContentEditable);
+      if (editing || e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (e.key === "/") {
         e.preventDefault();
         input.focus();
+        input.select();
+      } else if (e.key === "1") {
+        switchMode("minute");
+      } else if (e.key === "2") {
+        switchMode("day");
+      } else if (e.key === "3") {
+        switchMode("week");
+      } else if (e.key === "4") {
+        switchMode("month");
+      } else if (e.key === "ArrowDown") {
+        if ($("#alertPanel").classList.contains("hidden")) {
+          e.preventDefault();
+          stepWatchlist(1);
+        }
+      } else if (e.key === "ArrowUp") {
+        if ($("#alertPanel").classList.contains("hidden")) {
+          e.preventDefault();
+          stepWatchlist(-1);
+        }
+      }
+    });
+
+    window.addEventListener("hashchange", () => {
+      const code = hashCode();
+      if (code && code !== state.selected.code) {
+        selectStock(code, findKnownName(code) || code, decimalsFor(code));
       }
     });
   }
@@ -2350,7 +2497,7 @@
 
     setInterval(() => {
       if (document.hidden || !isTradingTime()) return;
-      if (state.mode === "minute" && !state.minuteDate) loadChart();
+      if (state.mode === "minute" && !state.minuteDate) loadChart(true);
     }, 30000);
 
     setInterval(() => {
@@ -2381,7 +2528,19 @@
     syncMarkBtn();
 
     await Promise.all([refreshOverview(), refreshWatchlist(), refreshRank()]);
-    selectStock("sh000001", "上证指数", 2);
+    const saved = loadLastView();
+    const fromHash = hashCode();
+    if (saved && ["minute", "day", "week", "month"].includes(saved.mode)) {
+      state.mode = saved.mode;
+      $$("#chartTabs button[data-mode]").forEach((b) => b.classList.toggle("active", b.dataset.mode === state.mode));
+    }
+    if (fromHash) {
+      selectStock(fromHash, findKnownName(fromHash) || (saved && saved.code === fromHash ? saved.name : fromHash), decimalsFor(fromHash));
+    } else if (saved) {
+      selectStock(saved.code, findKnownName(saved.code) || saved.name, saved.decimal ?? decimalsFor(saved.code));
+    } else {
+      selectStock("sh000001", "上证指数", 2);
+    }
     syncChartChrome();
     startPolling();
   }
