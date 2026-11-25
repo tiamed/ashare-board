@@ -1368,23 +1368,9 @@
 
     const markData = [{ yAxis: pre }];
     const minuteMarks = state.showMarks
-      ? findMinuteMarks(prices, vols, isIndex, separatorIndex + 1).map((h) => ({
-          coord: [h.i, prices[h.i]],
-          value: h.dir === "up" ? "拉" : "砸",
-          symbol: "triangle",
-          symbolRotate: h.dir === "up" ? 0 : 180,
-          symbolSize: 5,
-          itemStyle: { color: h.dir === "up" ? COLORS.up : COLORS.down },
-          label: {
-            show: true,
-            position: h.dir === "up" ? "top" : "bottom",
-            distance: 0,
-            color: h.dir === "up" ? COLORS.markUp : COLORS.markDown,
-            fontSize: 10,
-            fontWeight: 500,
-            lineHeight: 10,
-          },
-        }))
+      ? findMinuteMarks(prices, vols, isIndex, separatorIndex + 1).map((h) =>
+          makeMarkPoint([h.i, prices[h.i]], h.dir === "up" ? "拉" : "砸", h.dir === "up")
+        )
       : [];
     if (hasAuction) {
       markData.push({ xAxis: "09:30", lineStyle: { color: COLORS.border, type: "solid", width: 1 } });
@@ -1686,6 +1672,33 @@
     return out.slice(-6);
   }
 
+  function makeMarkPoint(coord, value, isUp) {
+    return {
+      coord,
+      value,
+      // 4px 小锚点落在真实拐点/异动点上，低饱和圆角胶囊标签紧贴其上/下方
+      symbol: "circle",
+      symbolSize: 4,
+      itemStyle: {
+        color: isUp ? COLORS.pivotTopDot : COLORS.pivotBotDot,
+        borderColor: COLORS.pivotDotRing,
+        borderWidth: 1,
+      },
+      label: {
+        show: true,
+        position: isUp ? "top" : "bottom",
+        distance: 3,
+        color: COLORS.pivotText,
+        backgroundColor: isUp ? COLORS.pivotTopBg : COLORS.pivotBotBg,
+        borderRadius: 7,
+        padding: [1.5, 4.5],
+        fontSize: 9,
+        fontWeight: 500,
+        lineHeight: 11,
+      },
+    };
+  }
+
   function renderKline(data) {
     if (!state.chart) return;
     const bars = data.bars || [];
@@ -1715,33 +1728,7 @@
     // 顶/底：日线要求摆动 ≥6%，周 ≥10%，月 ≥15%，避免小波动刷满屏
     const swing = state.mode === "week" ? 0.1 : state.mode === "month" ? 0.15 : 0.06;
     const pivots = state.showMarks ? findPivots(bars, 5, swing) : [];
-    const kMarks = pivots.map((p) => {
-      const isTop = p.kind === "top";
-      return {
-        coord: [p.i, p.price],
-        value: isTop ? "顶" : "底",
-        // 4px 小锚点落在真实 K 线拐点上，胶囊标签紧贴其上/下方
-        symbol: "circle",
-        symbolSize: 4,
-        itemStyle: {
-          color: isTop ? COLORS.pivotTopDot : COLORS.pivotBotDot,
-          borderColor: COLORS.pivotDotRing,
-          borderWidth: 1,
-        },
-        label: {
-          show: true,
-          position: isTop ? "top" : "bottom",
-          distance: 3,
-          color: COLORS.pivotText,
-          backgroundColor: isTop ? COLORS.pivotTopBg : COLORS.pivotBotBg,
-          borderRadius: 7,
-          padding: [1.5, 4.5],
-          fontSize: 9,
-          fontWeight: 500,
-          lineHeight: 11,
-        },
-      };
-    });
+    const kMarks = pivots.map((p) => makeMarkPoint([p.i, p.price], p.kind === "top" ? "顶" : "底", p.kind === "top"));
 
     const dec = state.selected.decimal;
     const zoomStart = Math.max(0, dates.length - 160);
