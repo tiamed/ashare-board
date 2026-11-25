@@ -30,6 +30,7 @@
       } catch (e) { return {}; }
     })(),
     maLevels: null,
+    minuteDate: null,
     minuteData: null,
     auctionData: null,
     watchlist: [],
@@ -1143,6 +1144,8 @@
     state.quote = null;
     state.performance = null;
     state.pendingZoom = null;
+    state.minuteDate = null;
+    syncChartChrome();
     $("#perfItems").innerHTML = "";
     renderQuotePlaceholder();
     $$(".index-card").forEach((el) => el.classList.toggle("active", el.dataset.code === code));
@@ -1165,6 +1168,22 @@
     }
     state.chart = echarts.init($("#chart"), null, { renderer: "canvas" });
     state.chart.on("dataZoom", scheduleRangeText);
+    // 日K 点击任意交易日柱子，切换到该日历史分时（拖动缩放不触发）
+    const zr = state.chart.getZr();
+    let downPt = null;
+    zr.on("mousedown", (e) => { downPt = [e.offsetX, e.offsetY]; });
+    zr.on("click", (e) => {
+      if (state.mode !== "day" || !state.klineMeta || !state.klineMeta.dates.length) return;
+      if (downPt && Math.hypot(e.offsetX - downPt[0], e.offsetY - downPt[1]) > 5) return;
+      const pt = [e.offsetX, e.offsetY];
+      if (!state.chart.containPixel("grid", pt)) return;
+      const coord = state.chart.convertFromPixel({ seriesIndex: 0 }, pt);
+      if (!coord || !Number.isFinite(coord[0])) return;
+      const idx = Math.round(coord[0]);
+      const date = state.klineMeta.dates[idx];
+      if (!date) return;
+      openDayMinute(date);
+    });
     window.addEventListener("resize", () => state.chart && state.chart.resize());
     if (window.ResizeObserver) {
       new ResizeObserver(() => state.chart && state.chart.resize()).observe($("#chart"));
@@ -1242,7 +1261,11 @@
 
     if (!pre || (!hasAuction && !hasSessionData)) {
       updateAuctionToggle(auctionHasData);
-      showChartEmpty("当前无分时数据");
+      showChartEmpty(
+        state.minuteDate
+          ? `暂无 ${state.minuteDate} 的历史分时数据（TDX 仅保留近期历史分时）`
+          : "当前无分时数据"
+      );
       state.chart.clear();
       return;
     }
@@ -1312,7 +1335,8 @@
       if (prices[i] == null) return null;
       return cumV ? +(cumPv / cumV).toFixed(3) : prices[i];
     });
-    const avgLine = isIndex ? computedAvg : avgs;
+    const hasRawAvg = avgs.some((v) => v != null && v > 0);
+    const avgLine = isIndex || !hasRawAvg ? computedAvg : avgs;
 
     const volColors = vols.map((v, i) => {
       if (v == null) return COLORS.axis;
@@ -1413,7 +1437,7 @@
           if (price == null) return "";
           const pct = pre ? ((price / pre - 1) * 100) : 0;
           const dir = pct >= 0 ? "up" : "down";
-          const head = times[idx];
+          const head = state.minuteDate ? `${state.minuteDate} ${times[idx]}` : times[idx];
           const rows = [`<div class="tt-head">${esc(head)}</div>`];
           rows.push(`<div class="tt-row"><span>价格</span><span class="tt-val ${dir}">${fmtPrice(price, dec)}<em>${fmtPct(pct)}</em></span></div>`);
           if (hasAuction && idx < au.length) {
@@ -1751,6 +1775,7 @@
           const maRows = maLines
             .map((m) => `<div class="tt-row"><span class="tt-ma"><i style="background:${m.color}"></i>${m.label}</span><span class="tt-val">${fmtPrice(m.data[idx])}</span></div>`)
             .join("");
+          const hint = state.mode === "day" ? '<div class="tt-hint">点击查看当日分时</div>' : "";
           return tooltipBox(`
             <div class="tt-head">${esc(b[0])}</div>
             <div class="tt-row"><span>开</span><span class="tt-val">${fmtPrice(open)}</span></div>
@@ -1760,7 +1785,7 @@
             <div class="tt-row"><span>振幅</span><span class="tt-val">${amp}</span></div>
             <div class="tt-row"><span>成交量</span><span class="tt-val">${fmtVolume(vol)}</span></div>
             <div class="tt-sep"></div>
-            ${maRows}`);
+            ${maRows}${hint}`);
         },
       },
       grid: [
@@ -1907,16 +1932,27 @@
     const seq = ++state.chartSeq;
     try {
       if (mode === "minute") {
-        const [data, auction, maLevels] = await Promise.all([
-          api(`/api/minute?code=${encodeURIComponent(code)}`),
-          api(`/api/auction?code=${encodeURIComponent(code)}`).catch(() => null),
-          loadMaLevels(code),
-        ]);
-        if (seq !== state.chartSeq) return;
-        state.minuteData = data;
-        state.auctionData = auction;
-        state.maLevels = maLevels;
-        renderMinute(data, auction);
+        if (state.minuteDate) {
+          const data = await api(
+            `/api/minute?code=${encodeURIComponent(code)}&date=${encodeURIComponent(state.minuteDate)}`
+          );
+          if (seq !== state.chartSeq) return;
+          state.minuteData = data;
+          state.auctionData = null;
+          state.maLevels = null;
+          renderMinute(data, null);
+        } else {
+          const [data, auction, maLevels] = await Promise.all([
+            api(`/api/minute?code=${encodeURIComponent(code)}`),
+            api(`/api/auction?code=${encodeURIComponent(code)}`).catch(() => null),
+            loadMaLevels(code),
+          ]);
+          if (seq !== state.chartSeq) return;
+          state.minuteData = data;
+          state.auctionData = auction;
+          state.maLevels = maLevels;
+          renderMinute(data, auction);
+        }
       } else {
         const range = RANGES[state.range] || RANGES["5y"];
         const adjust = state.range === "all" ? "none" : "qfq";
@@ -2033,6 +2069,21 @@
     // 分时均线图例只在分时出现；K 线用自带的 MA5/10/20/60 图例
     if (isK) $("#maLegend").classList.add("hidden");
     if (state.mode !== "minute") $("#auctionToggle").classList.add("hidden");
+    const histBar = $("#histMinuteBar");
+    const showHist = state.mode === "minute" && Boolean(state.minuteDate);
+    histBar.classList.toggle("hidden", !showHist);
+    if (showHist) {
+      $("#histMinuteLabel").textContent = `${state.minuteDate} 历史分时`;
+      $("#auctionToggle").classList.add("hidden");
+    }
+  }
+
+  function openDayMinute(date) {
+    state.minuteDate = date === todayStr() ? null : date;
+    state.mode = "minute";
+    $$("#chartTabs button[data-mode]").forEach((b) => b.classList.toggle("active", b.dataset.mode === "minute"));
+    syncChartChrome();
+    loadChart();
   }
 
   function syncMarkBtn() {
@@ -2045,6 +2096,7 @@
 
   function switchMode(mode) {
     if (mode !== "day") state.pendingZoom = null;
+    state.minuteDate = null;
     state.mode = mode;
     $$("#chartTabs button[data-mode]").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
     syncChartChrome();
@@ -2177,6 +2229,9 @@
       else loadChart();
     });
 
+    $("#histMinuteBack").addEventListener("click", () => switchMode("day"));
+    $("#histMinuteToday").addEventListener("click", () => switchMode("minute"));
+
     $("#perfItems").addEventListener("click", (e) => {
       const item = e.target.closest(".perf-item");
       if (!item) return;
@@ -2285,7 +2340,7 @@
 
     setInterval(() => {
       if (document.hidden || !isTradingTime()) return;
-      if (state.mode === "minute") loadChart();
+      if (state.mode === "minute" && !state.minuteDate) loadChart();
     }, 30000);
 
     setInterval(() => {

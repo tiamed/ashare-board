@@ -498,7 +498,46 @@ class Feed:
 
         return self.cache.get(f"rank:{sort}:{count}", 8.0, build)
 
-    def minute(self, code: str) -> dict:
+    def minute(self, code: str, date: str | None = None) -> dict:
+        date = (date or "").strip() or None
+        if date and not re.match(r"^\d{4}-\d{2}-\d{2}$", date):
+            raise ValueError("日期格式应为 YYYY-MM-DD")
+
+        if date:
+            def build_hist():
+                series = self.call("chart", lambda c: c.minutes.history(code, date))
+                points = []
+                for p in series.points:
+                    points.append(
+                        [
+                            p.time_label,
+                            round_price(p.price),
+                            round_price(p.avg_price) if p.avg_price else 0,
+                            int(finite(p.volume)),
+                        ]
+                    )
+                pre_close = round_price(series.prev_close) if series.prev_close else 0
+                open_price = round_price(series.open_price) if series.open_price else 0
+                if not open_price and points:
+                    open_price = points[0][1]
+                if not pre_close and open_price:
+                    pre_close = open_price
+                return {
+                    "code": code,
+                    "date": date,
+                    "pre_close": pre_close,
+                    "open": open_price,
+                    "points": points,
+                    "ts": now_str(),
+                }
+
+            today = datetime.now().strftime("%Y-%m-%d")
+            ttl = 4.0 if date == today else 3600.0
+            return self.cache.get(
+                f"minute:{code}:{date}", ttl, build_hist,
+                weigh=lambda v: len(v.get("points") or ()) * 60 + 256,
+            )
+
         def build():
             series = self.call("chart", lambda c: c.minutes.today(code))
             snap = self.snapshots([code]).get(code) or {}
@@ -1081,7 +1120,8 @@ class Handler(SimpleHTTPRequestHandler):
             codes = [c.strip() for c in q("codes").split(",") if c.strip()]
             self._send_json({"ts": now_str(), "items": feed.quotes(codes)})
         elif path == "/api/minute":
-            self._send_json(feed.minute(q("code")))
+            date = q("date") or None
+            self._send_json(feed.minute(q("code"), date))
         elif path == "/api/kline":
             period = q("period", "day")
             if period not in ("day", "week", "month"):

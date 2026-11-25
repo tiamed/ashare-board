@@ -858,6 +858,35 @@ body.alert-open .toasts { right: 360px; }
 .auction-toggle:hover { color: var(--text-2); }
 .auction-toggle em { font-style: normal; font-family: "IBM Plex Mono", ui-monospace, monospace; }
 .auction-toggle .chev { font-size: 12px; line-height: 1; color: var(--muted); }
+
+.hist-minute-bar {
+  position: absolute;
+  left: 64px;
+  top: 2px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--text-2);
+}
+.hist-minute-bar span {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--warn);
+}
+.hist-minute-bar button {
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+.hist-minute-bar button:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
 .auction-toggle:hover .chev { color: var(--text-2); }
 
 /* 分时均线图例：与 K 线 MA 图例同形，可点开关 */
@@ -975,6 +1004,7 @@ body.alert-open .toasts { right: 360px; }
 .tt-sep { border-top: 1px solid var(--line-soft); margin: 4px 0; }
 .tt-ma { display: inline-flex; align-items: center; gap: 5px; }
 .tt-ma i { width: 10px; height: 2px; flex: 0 0 auto; display: block; }
+.tt-hint { margin-top: 4px; color: var(--faint); font-size: 10px; text-align: right; }
 
 /* ---------- 涨跌色 ---------- */
 .up { color: var(--up); }
