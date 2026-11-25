@@ -1618,6 +1618,12 @@
     const ma10 = movingAverage(closes, 10);
     const ma20 = movingAverage(closes, 20);
     const ma60 = movingAverage(closes, 60);
+    const maLines = [
+      { label: "MA5", data: ma5, color: COLORS.ma5 },
+      { label: "MA10", data: ma10, color: COLORS.ma10 },
+      { label: "MA20", data: ma20, color: COLORS.ma20 },
+      { label: "MA60", data: ma60, color: COLORS.ma60 },
+    ];
 
     // 顶/底：日线要求摆动 ≥6%，周 ≥10%，月 ≥15%，避免小波动刷满屏
     const swing = state.mode === "week" ? 0.1 : state.mode === "month" ? 0.15 : 0.06;
@@ -1691,13 +1697,20 @@
           const [, open, close, low, high, vol] = b;
           const preClose = idx > 0 ? bars[idx - 1][2] : open;
           const pct = preClose ? ((close / preClose - 1) * 100) : 0;
+          const amp = fmtAmp({ pre_close: preClose, high, low });
+          const maRows = maLines
+            .map((m) => `<div class="tt-row"><span class="tt-ma"><i style="background:${m.color}"></i>${m.label}</span><span class="tt-val">${fmtPrice(m.data[idx])}</span></div>`)
+            .join("");
           return tooltipBox(`
             <div class="tt-head">${esc(b[0])}</div>
             <div class="tt-row"><span>开</span><span class="tt-val">${fmtPrice(open)}</span></div>
             <div class="tt-row"><span>收</span><span class="tt-val ${close >= open ? "up" : "down"}">${fmtPrice(close)}</span></div>
             <div class="tt-row"><span>高 / 低</span><span class="tt-val">${fmtPrice(high)} / ${fmtPrice(low)}</span></div>
             <div class="tt-row"><span>涨跌</span><span class="tt-val ${pct >= 0 ? "up" : "down"}">${fmtPct(pct)}</span></div>
-            <div class="tt-row"><span>成交量</span><span class="tt-val">${fmtVolume(vol)}</span></div>`);
+            <div class="tt-row"><span>振幅</span><span class="tt-val">${amp}</span></div>
+            <div class="tt-row"><span>成交量</span><span class="tt-val">${fmtVolume(vol)}</span></div>
+            <div class="tt-sep"></div>
+            ${maRows}`);
         },
       },
       grid: [

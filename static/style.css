@@ -961,6 +961,9 @@ body.alert-open .toasts { right: 360px; }
 .tt-val.up { color: var(--up); }
 .tt-val.down { color: var(--down); }
 .tt-val em { font-style: normal; font-size: 10.5px; opacity: .85; margin-left: 5px; }
+.tt-sep { border-top: 1px solid var(--line-soft); margin: 4px 0; }
+.tt-ma { display: inline-flex; align-items: center; gap: 5px; }
+.tt-ma i { width: 10px; height: 2px; flex: 0 0 auto; display: block; }
 
 /* ---------- 涨跌色 ---------- */
 .up { color: var(--up); }
