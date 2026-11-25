@@ -499,6 +499,33 @@
       + `历史样本（连续 3 天 <25% 后）：5/6 次次日上涨，均值 +3.71%，但唯一失败的一次是 −7.61%。样本仅 6 次，别当保证。`;
   }
 
+  function renderDayStreak() {
+    const el = $("#posDayStreak");
+    const perf = state.performance;
+    if (!perf || perf.code !== state.selected.code) {
+      el.classList.add("hidden");
+      return;
+    }
+    let s = Number(perf.streak) || 0;
+    // 盘中缓存最多 30s：若最新日K已是今天但实时涨跌已反向/走平，不误报连涨/连跌
+    if (Math.abs(s) >= 2 && perf.last_date === todayStr() && state.quote) {
+      const pct = num(state.quote.pct);
+      if (pct !== null && ((s > 0 && pct <= 0) || (s < 0 && pct >= 0))) s = 0;
+    }
+    const n = Math.abs(s);
+    if (n < 2) { el.classList.add("hidden"); return; }
+    const up = s > 0;
+    el.classList.remove("hidden");
+    el.classList.toggle("up", up);
+    el.classList.toggle("down", !up);
+    el.textContent = up ? `连涨 ${n} 天` : `连跌 ${n} 天`;
+    const pct = num(perf.streak_pct);
+    const span = perf.streak_start && perf.last_date ? `${perf.streak_start} 至 ${perf.last_date}` : "";
+    const detail = [span, pct !== null ? `累计 ${fmtPct(pct)}` : ""].filter(Boolean).join("，");
+    const dirText = up ? "上涨" : "下跌";
+    el.title = detail ? `连续 ${n} 个交易日${dirText}（${detail}）` : `连续 ${n} 个交易日${dirText}`;
+  }
+
   /* ---------------- 日内位置（防追涨） ---------------- */
   // pos = (last - low) / (high - low)：现价在今日高低区间的位置。
   // >70% 是"当天已经涨上去了才买"的位置，做成常驻显示，下单前能看见。
@@ -535,6 +562,7 @@
       ? "今日最高 = 最低，位置无意义"
       : `现价在今日 ${fmtPrice(q.low)}–${fmtPrice(q.high)} 区间的 ${info.pct.toFixed(1)}% 位置`;
     renderStreak(state.selected.code);
+    renderDayStreak();
     maybeRecordAllCloses(q);
   }
 
@@ -568,6 +596,7 @@
     $("#posPct").textContent = "";
     $("#posZone").textContent = "";
     $("#posStreak").classList.add("hidden");
+    $("#posDayStreak").classList.add("hidden");
     row.title = "";
   }
 
@@ -768,6 +797,7 @@
       if (state.selected.code !== code) return;
       state.performance = data;
       renderPerformance(data);
+      renderDayStreak();
     } catch (err) {
       /* 静默，下一轮再试 */
     }

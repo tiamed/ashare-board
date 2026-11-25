@@ -716,9 +716,32 @@ class Feed:
                             "end_date": bars[-1][0],
                         }
                     )
+            streak = 0
+            streak_pct = None
+            streak_start = None
+            if len(bars) >= 2:
+                diff = bars[-1][2] - bars[-2][2]
+                if diff != 0:
+                    sign = 1 if diff > 0 else -1
+                    count = 0
+                    for i in range(len(bars) - 1, 0, -1):
+                        d = bars[i][2] - bars[i - 1][2]
+                        if (sign > 0 and d > 0) or (sign < 0 and d < 0):
+                            count += 1
+                        else:
+                            break
+                    streak = sign * count
+                    if count >= 2:
+                        base = bars[len(bars) - 1 - count][2]
+                        if base:
+                            streak_pct = round((bars[-1][2] / base - 1) * 100, 2)
+                        streak_start = bars[len(bars) - count][0]
             return {
                 "code": code,
                 "periods": periods,
+                "streak": streak,
+                "streak_pct": streak_pct,
+                "streak_start": streak_start,
                 "adjust": data.get("adjust"),
                 "last_date": bars[-1][0] if bars else None,
                 "ts": now_str(),

@@ -726,6 +726,16 @@ body.alert-open .toasts { right: 360px; }
   font-size: 9.5px;
   white-space: nowrap;
 }
+.pos-day-streak {
+  margin-left: 2px;
+  padding-left: 6px;
+  border-left: 1px solid var(--line);
+  font-size: 9.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pos-day-streak.up { color: var(--up); }
+.pos-day-streak.down { color: var(--down); }
 
 /* >70% 追涨区：整条变红并加重；<30% 低位区用绿 */
 .pos-row[data-zone="high"] { color: var(--up); }
