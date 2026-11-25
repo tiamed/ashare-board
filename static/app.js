@@ -249,17 +249,37 @@
     return data;
   }
 
+  // A股交易时段（北京时间，周一至周五 09:15-11:30、13:00-15:00，含集合竞价及收盘后 1 分钟落定）
+  function isTradingTime(now = new Date()) {
+    const bj = new Date(now.getTime() + 8 * 3600 * 1000);
+    const day = bj.getUTCDay();
+    if (day === 0 || day === 6) return false;
+    const hm = bj.getUTCHours() * 60 + bj.getUTCMinutes();
+    return (hm >= 9 * 60 + 15 && hm <= 11 * 60 + 30) || (hm >= 13 * 60 && hm <= 15 * 60);
+  }
+
   function setConn(ok) {
+    state.connOk = ok;
     const dot = $("#connDot");
-    dot.classList.toggle("ok", ok === true);
+    const text = $("#connText");
+    const paused = ok === true && !isTradingTime();
+    dot.classList.toggle("ok", ok === true && !paused);
+    dot.classList.toggle("paused", paused);
     dot.classList.toggle("err", ok === false);
-    $("#connText").textContent = ok === true ? "数据正常" : ok === false ? "连接异常" : "连接中";
+    text.textContent = paused ? "已休市" : ok === true ? "数据正常" : ok === false ? "连接异常" : "连接中";
+    text.title = paused ? "A股闭市时段已暂停轮询，开盘自动恢复" : "";
   }
 
   /* ---------------- 时钟 ---------------- */
+  let lastTrading = null;
   function tickClock() {
     const d = new Date();
     $("#clock").textContent = d.toLocaleTimeString("zh-CN", { hour12: false });
+    const trading = isTradingTime(d);
+    if (trading !== lastTrading) {
+      lastTrading = trading;
+      if (state.connOk === true) setConn(true);
+    }
   }
 
   /* ---------------- 指数条 ---------------- */
@@ -2209,36 +2229,37 @@
   /* ---------------- 轮询 ---------------- */
   function startPolling() {
     setInterval(() => {
-      if (document.hidden) return;
+      if (document.hidden || !isTradingTime()) return;
       refreshOverview();
     }, 3000);
 
     setInterval(() => {
-      if (document.hidden) return;
+      if (document.hidden || !isTradingTime()) return;
       refreshWatchlist();
     }, 5000);
 
     setInterval(() => {
-      if (document.hidden) return;
+      if (document.hidden || !isTradingTime()) return;
       loadQuote();
     }, 4000);
 
     setInterval(() => {
-      if (document.hidden) return;
+      if (document.hidden || !isTradingTime()) return;
       refreshRank();
     }, 10000);
 
     setInterval(() => {
-      if (document.hidden) return;
+      if (document.hidden || !isTradingTime()) return;
       loadPerformance();
     }, 60000);
 
     setInterval(() => {
-      if (document.hidden) return;
+      if (document.hidden || !isTradingTime()) return;
       if (state.mode === "minute") loadChart();
     }, 30000);
 
     setInterval(() => {
+      if (!isTradingTime()) return;
       evaluateAlerts();
     }, 3000);
 
@@ -2256,7 +2277,7 @@
       });
     }
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) evaluateAlerts();
+      if (!document.hidden && isTradingTime()) evaluateAlerts();
     });
     tickClock();
     setInterval(tickClock, 1000);

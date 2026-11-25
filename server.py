@@ -409,10 +409,11 @@ class Feed:
                 codes = get_codes()
                 stale = []
                 now = time.time()
+                trading = is_trading_time()
                 with self._profile_lock:
                     for code in codes:
                         p = self.profiles.get(code)
-                        if not p or now - p["ts"] > 300:
+                        if not p or (trading and now - p["ts"] > 300):
                             stale.append(code)
                 if stale:
                     self.fetch_profiles(stale)
