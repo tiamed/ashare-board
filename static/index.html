@@ -41,15 +41,19 @@
     <span id="watchBtnCount" class="watch-count">0</span>
   </button>
 
-  <button id="themeBtn" class="theme-btn" title="切换日间/夜间" aria-label="切换日间/夜间">
-    <svg class="icon-moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 9.4A5.6 5.6 0 1 1 6.6 2.8a5.6 5.6 0 0 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
-    <svg class="icon-sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 1.6v1.5M8 12.9v1.5M1.6 8h1.5M12.9 8h1.5M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-  </button>
+  <div class="topbar-right">
+    <div class="status">
+      <span class="conn-state">
+        <span id="connDot" class="conn-dot"></span>
+        <span id="connText" class="conn-text">连接中</span>
+      </span>
+      <span id="clock" class="clock">--:--:--</span>
+    </div>
 
-  <div class="status">
-    <span id="clock" class="clock">--:--:--</span>
-    <span id="connDot" class="conn-dot"></span>
-    <span id="connText" class="conn-text">连接中</span>
+    <button id="themeBtn" class="theme-btn" title="切换日间/夜间" aria-label="切换日间/夜间">
+      <svg class="icon-moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 9.4A5.6 5.6 0 1 1 6.6 2.8a5.6 5.6 0 0 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      <svg class="icon-sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 1.6v1.5M8 12.9v1.5M1.6 8h1.5M12.9 8h1.5M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    </button>
   </div>
 </header>
 

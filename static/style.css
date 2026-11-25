@@ -123,10 +123,12 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   z-index: 30;
 }
 
-.brand { display: flex; align-items: baseline; gap: 10px; min-width: 148px; }
-.brand-name { font-size: 15px; font-weight: 600; letter-spacing: .2px; }
+/* 左侧品牌区宽 216px + 顶栏左内边距 16px + gap 16px = 248px，与下方自选栏右边框对齐 */
+.brand { display: flex; align-items: center; gap: 10px; width: 216px; flex: 0 0 auto; }
+.brand-name { font-size: 15px; font-weight: 600; letter-spacing: .2px; line-height: 1; }
 .brand-sub {
   font-size: 10px;
+  line-height: 1;
   color: var(--muted);
   padding-left: 10px;
   border-left: 1px solid var(--line-strong);
@@ -137,12 +139,13 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   display: flex;
   align-items: center;
   flex: 1;
-  max-width: 720px;
+  max-width: 560px;
   height: 32px;
   padding: 0 9px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: transparent;
+  transition: border-color .12s ease;
 }
 .search-wrap:focus-within { border-color: var(--focus); }
 .search-icon { width: 14px; height: 14px; margin-right: 8px; color: var(--muted); flex: 0 0 auto; }
@@ -150,6 +153,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   flex: 1;
   min-width: 0;
   height: 100%;
+  margin-right: 6px;
   border: 0;
   outline: 0;
   background: transparent;
@@ -157,12 +161,16 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 #searchInput::placeholder { color: var(--placeholder); }
 kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: 3px;
   padding: 0 5px;
   color: var(--muted);
   font-size: 10px;
   font-family: inherit;
+  flex: 0 0 auto;
 }
 
 .search-results {
@@ -199,8 +207,15 @@ kbd {
 }
 .sr-empty { padding: 11px; color: var(--muted); font-size: 11px; }
 
-.theme-btn {
+.topbar-right {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.theme-btn {
   width: 28px;
   height: 28px;
   display: grid;
@@ -244,13 +259,21 @@ html[data-theme="light"] .theme-btn .icon-moon { display: none; }
 .watch-btn[aria-expanded="true"] .watch-count { color: var(--bone); }
 .watch-scrim { display: none; }
 
-.status { display: flex; align-items: center; gap: 7px; min-width: 132px; justify-content: flex-end; }
-.clock { color: var(--text-2); font-size: 11.5px; font-variant-numeric: tabular-nums; }
-.conn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+.status { display: flex; align-items: center; gap: 10px; }
+.conn-state { display: inline-flex; align-items: center; gap: 5px; }
+.clock {
+  padding-left: 10px;
+  border-left: 1px solid var(--line-soft);
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.conn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); flex: 0 0 auto; }
 .conn-dot.ok { background: var(--down); }
 .conn-dot.paused { background: var(--faint); }
 .conn-dot.err { background: var(--up); }
-.conn-text { color: var(--muted); font-size: 11px; min-width: 42px; text-align: right; }
+.conn-text { color: var(--muted); font-size: 11px; line-height: 1; white-space: nowrap; }
 
 /* ---------- 指数 ---------- */
 .index-strip {
@@ -1047,12 +1070,14 @@ body.alert-open .toasts { right: 360px; }
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 1240px) {
+  .brand { width: 188px; }
   .layout { grid-template-columns: 220px minmax(0, 1fr) 260px; }
   .index-card { padding: 8px 12px 9px; }
   .chart-head { gap: 12px; }
   .stock-id { min-width: 150px; }
 }
 @media (max-width: 1040px) {
+  .brand { width: 178px; }
   .layout { grid-template-columns: 210px minmax(0, 1fr); }
   .rank-panel { display: none; }
   .index-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1066,8 +1091,9 @@ body.alert-open .toasts { right: 360px; }
 }
 @media (max-width: 760px) {
   .topbar { gap: 10px; padding: 0 12px; }
-  .brand { min-width: auto; }
+  .brand { width: auto; }
   .brand-sub { display: none; }
+  .topbar-right { margin-left: 0; gap: 0; }
   .status { display: none; }
   .search-wrap { min-width: 0; }
   .search-results { max-height: 60vh; }
