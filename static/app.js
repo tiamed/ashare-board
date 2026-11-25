@@ -59,8 +59,15 @@
       tooltipBg: "rgba(12,14,17,.98)",
       shadow: "0 8px 22px rgba(0,0,0,.35)",
       rule: "#575d66",
-      markUp: "#ff5a5f", // 顶/拉 文字：6.41:1
-      markDown: "#2fd47f", // 底/砸 文字：10.11:1
+      markUp: "#ff5a5f", // 拉 文字：6.41:1
+      markDown: "#2fd47f", // 砸 文字：10.11:1
+      // K线 顶/底 胶囊标注：低饱和暗红/深绿背景 + 白字 + 小锚点，不抢 K 线与均线焦点
+      pivotTopBg: "rgba(155, 58, 62, 0.82)",
+      pivotBotBg: "rgba(35, 112, 74, 0.82)",
+      pivotTopDot: "#c9686b",
+      pivotBotDot: "#4ba879",
+      pivotText: "#f5f3ef",
+      pivotDotRing: "#0b0c0e",
       // K线均线 / 分时参考线共用一组，同色相、只按主题取不同深浅（对底色均 ≥7:1）
       ma5: "#c8a05f",
       ma10: "#86a4bb",
@@ -80,8 +87,14 @@
       tooltipBg: "rgba(255,255,255,.99)",
       shadow: "0 8px 22px rgba(0,0,0,.10)",
       rule: "#adb2b7",
-      markUp: "#e02424", // 顶/拉 文字：4.72:1
-      markDown: "#067a4b", // 底/砸 文字：5.39:1（原来是 #00a86b，只有 3.08:1）
+      markUp: "#e02424", // 拉 文字：4.72:1
+      markDown: "#067a4b", // 砸 文字：5.39:1（原来是 #00a86b，只有 3.08:1）
+      pivotTopBg: "rgba(158, 56, 60, 0.86)",
+      pivotBotBg: "rgba(34, 108, 72, 0.86)",
+      pivotTopDot: "#b55054",
+      pivotBotDot: "#2f8a5c",
+      pivotText: "#ffffff",
+      pivotDotRing: "#ffffff",
       ma5: "#8a6a3f", // 4.98:1
       ma10: "#55728a", // 5.05:1
       ma20: "#7a5c7e", // 5.74:1
@@ -1702,23 +1715,33 @@
     // 顶/底：日线要求摆动 ≥6%，周 ≥10%，月 ≥15%，避免小波动刷满屏
     const swing = state.mode === "week" ? 0.1 : state.mode === "month" ? 0.15 : 0.06;
     const pivots = state.showMarks ? findPivots(bars, 5, swing) : [];
-    const kMarks = pivots.map((p) => ({
-      coord: [p.i, p.price],
-      value: p.kind === "top" ? "顶" : "底",
-      // 用 0.1px 的透明点占位：只留文字，位置正好落在折线拐点上
-      symbol: "circle",
-      symbolSize: 0.1,
-      itemStyle: { color: "transparent" },
-      label: {
-        show: true,
-        position: p.kind === "top" ? "top" : "bottom",
-        distance: 1,
-        color: p.kind === "top" ? COLORS.markUp : COLORS.markDown,
-        fontSize: 10,
-        fontWeight: 500,
-        lineHeight: 10,
-      },
-    }));
+    const kMarks = pivots.map((p) => {
+      const isTop = p.kind === "top";
+      return {
+        coord: [p.i, p.price],
+        value: isTop ? "顶" : "底",
+        // 4px 小锚点落在真实 K 线拐点上，胶囊标签紧贴其上/下方
+        symbol: "circle",
+        symbolSize: 4,
+        itemStyle: {
+          color: isTop ? COLORS.pivotTopDot : COLORS.pivotBotDot,
+          borderColor: COLORS.pivotDotRing,
+          borderWidth: 1,
+        },
+        label: {
+          show: true,
+          position: isTop ? "top" : "bottom",
+          distance: 3,
+          color: COLORS.pivotText,
+          backgroundColor: isTop ? COLORS.pivotTopBg : COLORS.pivotBotBg,
+          borderRadius: 7,
+          padding: [1.5, 4.5],
+          fontSize: 9,
+          fontWeight: 500,
+          lineHeight: 11,
+        },
+      };
+    });
 
     const dec = state.selected.decimal;
     const zoomStart = Math.max(0, dates.length - 160);
